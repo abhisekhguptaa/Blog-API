@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 
 const User = require("../models/user");
 const Post = require("../models/post");
+const { clearImage } = require("../util/file");
 
 module.exports = {
   createUser: async function ({ userInput }, req) {
@@ -37,6 +38,7 @@ module.exports = {
     const createdUser = await user.save();
     return { ...createdUser._doc, _id: createdUser._id.toString() };
   },
+
   login: async function ({ email, password }) {
     const user = await User.findOne({ email: email });
     if (!user) {
@@ -60,6 +62,7 @@ module.exports = {
     );
     return { token: token, userId: user._id.toString() };
   },
+
   createPost: async function ({ postInput }, req) {
     if (!req.isAuth) {
       const error = new Error("Not authenticated!");
@@ -107,6 +110,7 @@ module.exports = {
       updatedAt: createdPost.updatedAt.toISOString(),
     };
   },
+
   posts: async function ({ page }, req) {
     if (!req.isAuth) {
       const error = new Error("Not authenticated!");
@@ -135,6 +139,7 @@ module.exports = {
       totalPosts: totalPosts,
     };
   },
+
   post: async function ({ id }, req) {
     if (!req.isAuth) {
       const error = new Error("Not authenticated!");
@@ -154,6 +159,7 @@ module.exports = {
       updatedAt: post.updatedAt.toISOString(),
     };
   },
+
   updatePost: async function ({ id, postInput }, req) {
     if (!req.isAuth) {
       const error = new Error("Not authenticated!");
@@ -201,6 +207,69 @@ module.exports = {
       _id: updatedPost._id.toString(),
       createdAt: updatedPost.createdAt.toISOString(),
       updatedAt: updatedPost.updatedAt.toISOString(),
+    };
+  },
+
+  deletePost: async function ({ id }, req) {
+    if (!req.isAuth) {
+      const error = new Error("Not authenticated!");
+      error.code = 401;
+      throw error;
+    }
+    const post = await Post.findById(id);
+    if (!post) {
+      const error = new Error("No post found!");
+      error.code = 404;
+      throw error;
+    }
+    if (post.creator.toString() !== req.userId.toString()) {
+      const error = new Error("Not authorized!");
+      error.code = 403;
+      throw error;
+    }
+    clearImage(post.imageUrl);
+    await Post.findByIdAndRemove(id);
+    const user = await User.findById(req.userId);
+    user.posts.pull(id);
+    await user.save();
+    return true;
+  },
+
+  user: async function (args, req) {
+    if (!req.isAuth) {
+      const error = new Error("Not authenticated!");
+      error.code = 401;
+      throw error;
+    }
+    const user = await User.findById(req.userId);
+    if (!user) {
+      const error = new Error("No user found!");
+      error.code = 404;
+      throw error;
+    }
+    return {
+      ...user._doc,
+      _id: user._id.toString(),
+    };
+  },
+
+  updateStatus: async function ({ status }, req) {
+    if (!req.isAuth) {
+      const error = new Error("Not authenticated!");
+      error.code = 401;
+      throw error;
+    }
+    const user = await User.findById(req.userId);
+    if (!user) {
+      const error = new Error("No user found!");
+      error.code = 404;
+      throw error;
+    }
+    user.status = status;
+    await user.save();
+    return {
+      ...user._doc,
+      _id: user._id.toString(),
     };
   },
 };

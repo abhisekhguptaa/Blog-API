@@ -4,7 +4,7 @@ module.exports = (req, res, next) => {
   const authHeader = req.get("Authorization");
   if (!authHeader) {
     req.isAuth = false;
-    return next(); // next() is used to continue to the next middleware
+    return next();
   }
   const token = authHeader.split(" ")[1];
   let decodedToken;
@@ -12,11 +12,11 @@ module.exports = (req, res, next) => {
     decodedToken = jwt.verify(token, "somesupersecretsecret");
   } catch (err) {
     req.isAuth = false;
-    return next(); // next() is used to continue to the next middleware
+    return next();
   }
   if (!decodedToken) {
     req.isAuth = false;
-    return next(); // next() is used to continue to the next middleware
+    return next();
   }
   req.userId = decodedToken.userId;
   req.isAuth = true;
